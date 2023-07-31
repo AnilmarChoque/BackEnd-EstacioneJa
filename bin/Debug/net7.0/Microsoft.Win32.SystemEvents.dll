@@ -1,0 +1,259 @@
+ion traverse(node) {
+            switch (node.kind) {
+                case 224 /* SyntaxKind.YieldExpression */:
+                    visitor(node);
+                    var operand = node.expression;
+                    if (operand) {
+                        traverse(operand);
+                    }
+                    return;
+                case 260 /* SyntaxKind.EnumDeclaration */:
+                case 258 /* SyntaxKind.InterfaceDeclaration */:
+                case 261 /* SyntaxKind.ModuleDeclaration */:
+                case 259 /* SyntaxKind.TypeAliasDeclaration */:
+                    // These are not allowed inside a generator now, but eventually they may be allowed
+                    // as local types. Regardless, skip them to avoid the work.
+                    return;
+                default:
+                    if (ts.isFunctionLike(node)) {
+                        if (node.name && node.name.kind === 162 /* SyntaxKind.ComputedPropertyName */) {
+                            // Note that we will not include methods/accessors of a class because they would require
+                            // first descending into the class. This is by design.
+                            traverse(node.name.expression);
+                            return;
+                        }
+                    }
+                    else if (!isPartOfTypeNode(node)) {
+                        // This is the general case, which should include mostly expressions and statements.
+                        // Also includes NodeArrays.
+                        ts.forEachChild(node, traverse);
+                    }
+            }
+        }
+    }
+    ts.forEachYieldExpression = forEachYieldExpression;
+    /**
+     * Gets the most likely element type for a TypeNode. This is not an exhaustive test
+     * as it assumes a rest argument can only be an array type (either T[], or Array<T>).
+     *
+     * @param node The type node.
+     */
+    function getRestParameterElementType(node) {
+        if (node && node.kind === 183 /* SyntaxKind.ArrayType */) {
+            return node.elementType;
+        }
+        else if (node && node.kind === 178 /* SyntaxKind.TypeReference */) {
+            return ts.singleOrUndefined(node.typeArguments);
+        }
+        else {
+            return undefined;
+        }
+    }
+    ts.getRestParameterElementType = getRestParameterElementType;
+    function getMembersOfDeclaration(node) {
+        switch (node.kind) {
+            case 258 /* SyntaxKind.InterfaceDeclaration */:
+            case 257 /* SyntaxKind.ClassDeclaration */:
+            case 226 /* SyntaxKind.ClassExpression */:
+            case 182 /* SyntaxKind.TypeLiteral */:
+                return node.members;
+            case 205 /* SyntaxKind.ObjectLiteralExpression */:
+                return node.properties;
+        }
+    }
+    ts.getMembersOfDeclaration = getMembersOfDeclaration;
+    function isVariableLike(node) {
+        if (node) {
+            switch (node.kind) {
+                case 203 /* SyntaxKind.BindingElement */:
+                case 299 /* SyntaxKind.EnumMember */:
+                case 164 /* SyntaxKind.Parameter */:
+                case 296 /* SyntaxKind.PropertyAssignment */:
+                case 167 /* SyntaxKind.PropertyDeclaration */:
+                case 166 /* SyntaxKind.PropertySignature */:
+                case 297 /* SyntaxKind.ShorthandPropertyAssignment */:
+                case 254 /* SyntaxKind.VariableDeclaration */:
+                    return true;
+            }
+        }
+        return false;
+    }
+    ts.isVariableLike = isVariableLike;
+    function isVariableLikeOrAccessor(node) {
+        return isVariableLike(node) || ts.isAccessor(node);
+    }
+    ts.isVariableLikeOrAccessor = isVariableLikeOrAccessor;
+    function isVariableDeclarationInVariableStatement(node) {
+        return node.parent.kind === 255 /* SyntaxKind.VariableDeclarationList */
+            && node.parent.parent.kind === 237 /* SyntaxKind.VariableStatement */;
+    }
+    ts.isVariableDeclarationInVariableStatement = isVariableDeclarationInVariableStatement;
+    function isCommonJsExportedExpression(node) {
+        if (!isInJSFile(node))
+            return false;
+        return (ts.isObjectLiteralExpression(node.parent) && ts.isBinaryExpression(node.parent.parent) && getAssignmentDeclarationKind(node.parent.parent) === 2 /* AssignmentDeclarationKind.ModuleExports */) ||
+            isCommonJsExportPropertyAssignment(node.parent);
+    }
+    ts.isCommonJsExportedExpression = isCommonJsExportedExpression;
+    function isCommonJsExportPropertyAssignment(node) {
+        if (!isInJSFile(node))
+            return false;
+        return (ts.isBinaryExpression(node) && getAssignmentDeclarationKind(node) === 1 /* AssignmentDeclarationKind.ExportsProperty */);
+    }
+    ts.isCommonJsExportPropertyAssignment = isCommonJsExportPropertyAssignment;
+    function isValidESSymbolDeclaration(node) {
+        return (ts.isVariableDeclaration(node) ? isVarConst(node) && ts.isIdentifier(node.name) && isVariableDeclarationInVariableStatement(node) :
+            ts.isPropertyDeclaration(node) ? hasEffectiveReadonlyModifier(node) && hasStaticModifier(node) :
+                ts.isPropertySignature(node) && hasEffectiveReadonlyModifier(node)) || isCommonJsExportPropertyAssignment(node);
+    }
+    ts.isValidESSymbolDeclaration = isValidESSymbolDeclaration;
+    function introducesArgumentsExoticObject(node) {
+        switch (node.kind) {
+            case 169 /* SyntaxKind.MethodDeclaration */:
+            case 168 /* SyntaxKind.MethodSignature */:
+            case 171 /* SyntaxKind.Constructor */:
+            case 172 /* SyntaxKind.GetAccessor */:
+            case 173 /* SyntaxKind.SetAccessor */:
+            case 256 /* SyntaxKind.FunctionDeclaration */:
+            case 213 /* SyntaxKind.FunctionExpression */:
+                return true;
+        }
+        return false;
+    }
+    ts.introducesArgumentsExoticObject = introducesArgumentsExoticObject;
+    function unwrapInnermostStatementOfLabel(node, beforeUnwrapLabelCallback) {
+        while (true) {
+            if (beforeUnwrapLabelCallback) {
+                beforeUnwrapLabelCallback(node);
+            }
+            if (node.statement.kind !== 250 /* SyntaxKind.LabeledStatement */) {
+                return node.statement;
+            }
+            node = node.statement;
+        }
+    }
+    ts.unwrapInnermostStatementOfLabel = unwrapInnermostStatementOfLabel;
+    function isFunctionBlock(node) {
+        return node && node.kind === 235 /* SyntaxKind.Block */ && ts.isFunctionLike(node.parent);
+    }
+    ts.isFunctionBlock = isFunctionBlock;
+    function isObjectLiteralMethod(node) {
+        return node && node.kind === 169 /* SyntaxKind.MethodDeclaration */ && node.parent.kind === 205 /* SyntaxKind.ObjectLiteralExpression */;
+    }
+    ts.isObjectLiteralMethod = isObjectLiteralMethod;
+    function isObjectLiteralOrClassExpressionMethodOrAccessor(node) {
+        return (node.kind === 169 /* SyntaxKind.MethodDeclaration */ || node.kind === 172 /* SyntaxKind.GetAccessor */ || node.kind === 173 /* SyntaxKind.SetAccessor */) &&
+            (node.parent.kind === 205 /* SyntaxKind.ObjectLiteralExpression */ ||
+                node.parent.kind === 226 /* SyntaxKind.ClassExpression */);
+    }
+    ts.isObjectLiteralOrClassExpressionMethodOrAccessor = isObjectLiteralOrClassExpressionMethodOrAccessor;
+    function isIdentifierTypePredicate(predicate) {
+        return predicate && predicate.kind === 1 /* TypePredicateKind.Identifier */;
+    }
+    ts.isIdentifierTypePredicate = isIdentifierTypePredicate;
+    function isThisTypePredicate(predicate) {
+        return predicate && predicate.kind === 0 /* TypePredicateKind.This */;
+    }
+    ts.isThisTypePredicate = isThisTypePredicate;
+    function getPropertyAssignment(objectLiteral, key, key2) {
+        return objectLiteral.properties.filter(function (property) {
+            if (property.kind === 296 /* SyntaxKind.PropertyAssignment */) {
+                var propName = tryGetTextOfPropertyName(property.name);
+                return key === propName || (!!key2 && key2 === propName);
+            }
+            return false;
+        });
+    }
+  ettingsChanged remove_DisplaySettingsChanged add_InstalledFontsChanged remove_InstalledFontsChanged add_TimerElapsed remove_TimerElapsed get_ErrorSystemEventsNotSupported <PlatformName>k__BackingField <ParameterName>k__BackingField <ReturnValue>k__BackingField <ParameterValue>k__BackingField <Members>k__BackingField Suspend method netstandard Keyboard get_Mode mode StatusChange EndInvoke BeginInvoke Locale RuntimeTypeHandle GetTypeFromHandle VisualStyle get_PlatformName platformName get_ParameterName parameterName Resume Type Mouse MulticastDelegate EditorBrowsableState AssemblyMetadataAttribute EmbeddedAttribute CompilerGeneratedAttribute UnverifiableCodeAttribute AttributeUsageAttribute NeutralResourcesLanguageAttribute DebuggableAttribute NullableAttribute EditorBrowsableAttribute AssemblyTitleAttribute ObsoleteAttribute DoesNotReturnIfAttribute TargetFrameworkAttribute MaybeNullAttribute NotNullIfNotNullAttribute MemberNotNullAttribute AllowNullAttribute DisallowNullAttribute SupportedOSPlatformAttribute UnsupportedOSPlatformAttribute TargetPlatformAttribute MaybeNullWhenAttribute MemberNotNullWhenAttribute AssemblyFileVersionAttribute AssemblyInformationalVersionAttribute SecurityPermissionAttribute SuppressGCTransitionAttribute AssemblyDescriptionAttribute DoesNotReturnAttribute AssemblyDefaultAliasAttribute CompilationRelaxationsAttribute AssemblyProductAttribute AssemblyCopyrightAttribute CLSCompliantAttribute NullableContextAttribute ParamArrayAttribute NullablePublicOnlyAttribute AssemblyCompanyAttribute RuntimeCompatibilityAttribute Byte get_ReturnValue returnValue get_ParameterValue parameterValue value SessionLogoff Flag add_SessionEnding remove_SessionEnding add_UserPreferenceChanging remove_UserPreferenceChanging add_DisplaySettingsChanging remove_DisplaySettingsChanging System.Runtime.Versioning GetResourceString GetString defaultString add_SessionSwitch remove_SessionSwitch TryGetSwitch get_ErrorGetTempPath AsyncCallback callback SessionLock SessionUnlock General interval get_Cancel set_Cancel System.ComponentModel Microsoft.Win32.SystemEvents.dll ILLink.Substitutions.xml SessionRemoteControl System Enum Join Icon SessionLogon SecurityAction System.Reflection PlatformNotSupportedException MissingManifestResourceException get_Reason SessionSwitchReason reason add_EventsThreadShutdown remove_EventsThreadShutdown SystemShutdown Desktop member IFormatProvider provider sender get_ResourceManager s_resourceManager SessionEndedEventHandler UserPreferenceChangedEventHandler PowerModeChangedEventHandler TimerElapsedEventHandler SessionEndingEventHandler UserPreferenceChangingEventHandler SessionSwitchEventHandler get_ErrorCreateTimer get_ErrorKillTimer Screensaver Power Color .ctor .cctor System.Diagnostics System.Runtime.InteropServices System.Runtime.CompilerServices System.Resources FxResources.Microsoft.Win32.SystemEvents.SR.resources DebuggingModes PowerModes NullableFlags SessionEndedEventArgs UserPreferenceChangedEventArgs PowerModeChangedEventArgs TimerElapsedEventArgs SessionEndingEventArgs UserPreferenceChangingEventArgs SessionSwitchEventArgs args System.Diagnostics.CodeAnalysis Microsoft.CodeAnalysis IncludesInternals Equals System.Security.Permissions SessionEndReasons get_Members members AttributeTargets FxResources.Microsoft.Win32.SystemEvents get_PlatformNotSupported_SystemEvents get_ErrorCreateSystemEvents UsingResourceKeys s_usingResourceKeys Concat resourceFormat Object object ConsoleConnect RemoteConnect ConsoleDisconnect RemoteDisconnect IAsyncResult result get_InvalidLowBoundArgument AppContext Menu Window Policy resourceKey get_Category UserPreferenceCategory category add_LowMemory remove_LowMemory Accessibility System.Security   ,    /E r r o r C r e a t e S y s t e m E v e n t s  !E r r o r C r e a t e T i m e r  !E r r o r G e t T e m p P a t h  E r r o r K i l l T i m e r  ;E r r o r S y s t e m E v e n t s N o t S u p p o r t e d  /I n v a l i d L o w B o u n d A r g u m e n t  CP l a t f o r m N o t S u p p o r t e d _ S y s t e m E v e n t s  MS y s t e m . R e s o u r c e s . U s e S y s t e m R e s o u r c e K e y s   j8u~ƒÈ¿NëiÿYÔN         E Y ÄÅ        Äù	 Äù
+ Äù	 Äù Ä≠Ä± Ä≠ Ã{ˇÕ-›QÄ† $  Ä  î      $  RSA1     KÜƒÀxTõ4∫∂; ‚;˛µ≥Ï9 t6ß„ÀŸ_œÖqU®íé™)Î˝œª≠;ß˛ßΩ£"ljç7
+L”˜Hknº"YÖ¶8GnıqÃí§a< ∏˙e÷Œ‡ÀÂÛc0…†AÉUüÔ$Ã)∆Ÿ„•A3:Ÿæ“+8À                        	   
+                   Ä°.ÄáSystem.Security.Permissions.SecurityPermissionAttribute, netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51TSkipVerification$8DTÄë   $  $  
+ mq m 8  8 (
+ m(q   0
+ m0q D  D <
+ m<q y   , 4 @ P \ d  Äç     L
+ mLq T  T X
+ mXq `
+ m`q     Äë           ( $( 8( ( D( ( T Äë ( (         TWrapNonExceptionThrows      6 .NETStandard,Version=v2.0 TFrameworkDisplayName     windows  ! Microsoft.Win32.SystemEvents  
+ en-US   NotSupportedTrue   .NETFrameworkAssembly    ServiceableTrue   PreferInboxTrue   Microsoft Corporation  3 .¬© Microsoft Corporation. All rights reserved.   5.0.20.51904  3 .5.0.0+cf258a14b70ad9069470a108f13765e0e5988f51   Microsoft¬Æ .NET  2 RepositoryUrlgit://github.com/dotnet/runtime  & Ñk   TAllowMultiple T	Inherited & L   TAllowMultiple T	Inherited &     TAllowMultiple T	Inherited         Ä	   T	Inherited  Ä)   T	Inherited      T	Inherited & Ä(   TAllowMultipleT	Inherited  @    T	Inherited & ¿    T	Inherited TAllowMultiple&     TAllowMultiple T	Inherited & ˇ   TAllowMultipleT	Inherited       R MThis event has been deprecated. https://go.microsoft.com/fwlink/?linkid=14202     œ  Œ Ôæ   ë   lSystem.Resources.ResourceReader, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089#System.Resources.RuntimeResourceSet          PADPADP™9Å°”eµû∏"˚Éàiˇ6÷LxB|O¸§]X   ›   3         }   û   C  .E r r o r C r e a t e S y s t e m E v e n t s      E r r o r C r e a t e T i m e r /    E r r o r G e t T e m p P a t h E   E r r o r K i l l T i m e r e   :E r r o r S y s t e m E v e n t s N o t S u p p o r t e d x   .I n v a l i d L o w B o u n d A r g u m e n t   BP l a t f o r m N o t S u p p o r t e d _ S y s t e m E v e n t s [  -Failed to create system events window thread.Cannot create timer.Cannot get temporary file nameCannot end timer.ôSystem event notifications are not supported under the current context. Server processes, for example, may not support global system event notifications.E'{1}' is not a valid value for '{0}'. '{0}' must be greater than {2}./SystemEvents is not supported on this platform.       Ôªø<linker>
+  <assembly fullname="Microsoft.Win32.SystemEvents" feature="System.Resources.UseSystemResourceKeys" featurevalue="true">
+    <!-- System.Resources.UseSystemResourceKeys removes resource strings and instead uses the resource key as the exception message -->
+    <resource name="FxResources.Microsoft.Win32.SystemEvents.SR.resources" action="remove" />
+    <type fullname="System.SR">
+      <method signature="System.Boolean UsingResourceKeys()" body="stub" value="true" />
+    </type>
+  </assembly>
+</linker>    €+Éj]@ÊáÂùD†&U-•Ôe‡<pèùaÍ–çù∑á#y´Åo¡Xˇ˜£_´ëUxç@Î>ñ'“_B‰€m[£œ={D§u5UÏŒ'ñπ/åö≈j[•{Õ‰>dFtE*Â/ßØƒ§,Ù∆îU+ƒ‡Ra{    á7°› MP   ~   ê\  ê>                '   ]  ?                             RSDS∏∞Û¿SSLã4Ô(=VÂ5   /_/artifacts/obj/Microsoft.Win32.SystemEvents/netstandard2.0-Release/Microsoft.Win32.SystemEvents.pdb SHA256 ∏∞Û¿SSL4Ô(=VÂ5á7°›vG÷Õ‘_·§ﬁ™3g]]          w]                          i]            _CorDllMain mscoree.dll        ˇ%                                                                                                                                       Ä                  0  Ä                   H   X`  h          h4   V S _ V E R S I O N _ I N F O     ΩÔ˛      ¿         ?                         D    V a r F i l e I n f o     $    T r a n s l a t i o n       ∞»   S t r i n g F i l e I n f o   §   0 0 0 0 0 4 b 0   R   C o m m e n t s   M i c r o s o f t . W i n 3 2 . S y s t e m E v e n t s     L   C o m p a n y N a m e     M i c r o s o f t   C o r p o r a t i o n   b   F i l e D e s c r i p t i o n     M i c r o s o f t . W i n 3 2 . S y s t e m E v e n t s     :   F i l e V e r s i o n     5 . 0 . 2 0 . 5 1 9 0 4     b !  I n t e r n a l N a m e   M i c r o s o f t . W i n 3 2 . S y s t e m E v e n t s . d l l     Ä .  L e g a l C o p y r i g h t   ©   M i c r o s o f t   C o r p o r a t i o n .   A l l   r i g h t s   r e s e r v e d .   j !  O r i g i n a l F i l e n a m e   M i c r o s o f t . W i n 3 2 . S y s t e m E v e n t s . d l l     @   P r o d u c t N a m e     M i c r o s o f t Æ   . N E T   Ç /  P r o d u c t V e r s i o n   5 . 0 . 0 + c f 2 5 8 a 1 4 b 7 0 a d 9 0 6 9 4 7 0 a 1 0 8 f 1 3 7 6 5 e 0 e 5 9 8 8 f 5 1     8   A s s e m b l y   V e r s i o n   5 . 0 . 0 . 0                                                                                                                                                                                                                                                                                                                                    P     å=                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      à#    0Ç#u	*ÜHÜ˜†Ç#f0Ç#b10	`ÜHe 0\
++Ç7†N0L0
++Ç70	 †¢Ä 010	`ÜHe  Õ◊?–:D1·ıÏ≈ñ[9Ï©@¯‰¶czï"qLHA3D?†ÇÅ0Çˇ0ÇÁ†3  árrY@«	    á0	*ÜHÜ˜ 0~10	UUS10U
+Washington10URedmond10U
+Microsoft Corporation1(0&UMicrosoft Code Signing PCA 20110200304183947Z210303183947Z0t10	UUS10U
+Washington10URedmond10U
+Microsoft Corporation10UMicrosoft Corporation0Ç"0	*ÜHÜ˜ Ç 0Ç
+Ç Œ∑…s≥˜O≥
+".`w∞0Yß´¿2ª±NÖêêiµpùïKÖ≤d·4O∆ÅŒpC„£]=?œójX∫\wüK»øY{E“Ù¨?√Dø©Å‡6ßW€ GG∞ù∆}û\“√…éIlâäè√üq'û$3›H:éÿÂ3å–%å¯õå%üµ3CTœŒ¡Ë•≥¡Ñ"∂¡Eæ»[élΩvçd¯bı5/'—gÎÂ!‹v∫M›.?8øu6·Pä“âƒÖt}[5⁄mN.™C∫Î—,Õ/™<«3á/ìóàa∞Éß§âp5ˇe◊cºïÕ˝∂Wù÷cJ3[{sœó £Ç~0Çz0U%0
++Ç7L+0UÜã¯g#ΩÈ¨d%”#ß;∂ÕUŒ%À0PUI0G§E0C1)0'U Microsoft Operations Puerto Rico10U230012+4583850U#0ÄHndÂP”Ç™77"µm® uï0TUM0K0I†G†EÜChttp://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a+U0S0Q+0ÜEhttp://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0Uˇ0 0	*ÜHÜ˜ Ç ã≤K°:æö÷“Ö4Ä}úÚ2‚#dÆPùD+ıeÉ°[›ë◊é502àqv≈∏P∫Zæ
+6µ8èÏZ¶iæ@¯ﬁ›∫T¶;q§L™R´Os}0Î;€Ê*jä†≥”ﬂª/scUaçóÔ9®ÓW¸;…–Íì_Jq]éﬁû*ÑÁLÒ¡UG@ÅŸ§ÃZq±NBk®daósÓ)]<U¯d[ﬂ´B‡å76^Ô€⁄âìÙ	Vy"vÄW1“Ω˙Î1ÕY=◊zäuÌNÂùøÍÁv© "oRTgØãH(;pÜ‘¿ ü◊^∞Pûƒ∏ê‡“Òﬁ ¬xy¡o!˜Eô-®~g‡úR%ê›0ïdeNám	ßù:®íìÛyû≥s_‡»ÇÕ %`‰Oí9‘B»]’˝O2	˜∂{6>€&%Tj°ﬁjDX2‰õãiÓî¡·ü„®›ÿg§+6,ﬁÃhKI´¬ÔWÌﬁÍYÃôu?◊Û⁄ü=Ìó~ëOØfÚà›Ã~ÂPÄ≠ëgl˛)Õ ›‘Oœj◊…¬π\+ëfk∆iø÷n∂bº	A™`áe¥¬9«E¨=!·{˛≥¯•P]‚≠zÙÂexÈ∏ÿaé‰~ÿ3-˝’Æ~5Èâounç⁄°å‡^j1Ç[BßRªÜ¥∫Çk/èﬁ-˘—8Sƒ0Çz0Çb†
+aê“     0	*ÜHÜ˜ 0Åà10	UUS10U
+Washington10URedmond10U
+Microsoft Corporation1200U)Microsoft Root Certificate Authority 20110110708205909Z260708210909Z0~10	UUS10U
+Washington10URedmond10U
+Microsoft Corporation1(0&UMicrosoft Code Signing PCA 20110Ç"0	*ÜHÜ˜ Ç 0Ç
+Ç ´˙r.≠ÿn™ÇM4∫Ú∂X!üB*kÈZP™∏8I∫√›7k∆ÿ8¬ô∞»9’1B”âydá~î`$lØûIúÈh^“ﬂõS≤
+,√ØŸ©+Æz	Ø◊ñY `ÈfvË2R&/Á´Pœ≥D∑]ÿƒ.u´hÛÀmÛ:\°ÙF∫‡8d¨nd5x¶†c-”@ì¯„ﬁ’\y•I)Áæ†wæî=Ô˚„+ZMV(¢zr‡:∑I^ÿÌÌCëÉŸ{≤{ÜŸ>±å]ËâOÑÚ°/Y‰ê;-Æ3X≈∑>˛2”≥=±≤Øí8~“ùÄ,ıNVë!5%√9ndS∫ú≠#ÑÀÙ∫Üç˜_–Røåîáº¿!t%_(∂Ã'(8%ò9J6œ|±íÆ#ß©fÏaj·(Iù_à‚%]”!K>RƒµW?$—z[/’#„p]QFw≥¯ ·º¨Ç_€¿≥Ω‘UKÁ9°È#Iº∏D|E‰¡√rz‡rÁ$ﬂøFô≈Ô¬W€ÉçÏMI0ß´éﬂÏ[üØ¸›∞f‚¡óÅ{Ì÷ÌKÁI)ß(¶ß}gÄÊäbx_≤/Ñ◊Wú\øw((ÒÌm√(è,è@7O¡·ÖDâƒ	L≈‘•C/tï˜n¯x X,]`ïö>O3Ñ⁄∞àﬁûNÙñ∞ºF†lò“‡÷àå £ÇÌ0ÇÈ0	+Ç7 0UHndÂP”Ç™77"µm® uï0	+Ç7
+ S u b C A0UÜ0Uˇ0ˇ0U#0Är-:1êCπN·Íß«1—#â40ZUS0Q0O†M†KÜIhttp://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^+R0P0N+0ÜBhttp://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0ÅüU Åó0Åî0Åë	+Ç7.0ÅÉ0?+3http://www.microsoft.com/pkiops/docs/primarycps.htm0@+042  L e g a l _ p o l i c y _ s t a t e m e n t . 0	*ÜHÜ˜ Ç gÚÜ•ò‡Ty.”ÿtg"õñ·cíôBñ}“yê¡e_.,>¯√r—mÉ˛æ?Ë
+ ;øG©£Ûi€cø"5•ó]eÑê}ãFPUÿí|“KÛ<BãR–∞˝k„>.)õÊ=•‘µwî9‚Èd…D=xz#Û}¶êtÉçÙÀ&F*¬äª§©õÌh˙h.ï†*?*kXIc	inZòñ‰ÉÙ¿èÛF+ﬁ¸;–Ω5Ôn%ÆÂØ'Ì–›ÛØô(óòM=Úâ÷√2‚≈-Œ[û¥I9
+∆
+¬∆≠ÆÂ≤Ÿ€àQEX82q'±Ù'¯ﬁ,: iò≤Yâhnoß∑t√@¶*(>Ç?Mf¿≥Mı·èo}EßvÂ@*e£√]RbÜ√c6óÜﬂ⁄Û¯Ú°ö'·Õ•ó–Ó]cA„[úá>w—±uæaaµ‹∆æﬂA«(Óﬁe/Ïóˆ°\ñÿ ÷°FΩYÛó•	KHôÄ– )≈±õ•?Ew5∆“¢¢üzz"˙Hï´˚G#Äıû¯øk∑Kó‚ÎuxÏÍ7ôyKˇ÷≥#huÊØ˙¸ãÎÄÍi;Ø¸0ÌLéﬂﬂumcë=—ùVNOøÄW"°x2!zÔA
+±?˚®Ã§]¡°àõWqVNHE¿B…õv[
+ÄHk˝yü¡Ωmmj…RszPÕ1Çg0Çc0Åï0~10	UUS10U
+Washington10URedmond10U
+Microsoft Corporation1(0&UMicrosoft Code Signing PCA 20113  árrY@«	    á0	`ÜHe †ÅÆ0	*ÜHÜ˜	1
++Ç70
++Ç710
++Ç70/	*ÜHÜ˜	1" Ò˜¬ÿ¬Ï e§ “º‘tÚUèc|≠á^õí˚+†üò0B
++Ç71402†Ä M i c r o s o f t°Ähttp://www.microsoft.com0	*ÜHÜ˜ Ç ª…Y%Ø˛^Rx=qp˙˚tÙúﬁ¡ ®F&™¿$:rAï:îúl=ñ$52€eÑ8å‘ˇ©u€Öì¥¨(ﬁ—â%Ÿ¨õÇ¬ÇÈ û
+∞oˇGÙ™;ÙÇY∑á@_[*ç*B·¡]Ìòç{s1Y¥ë^√∂îwÖ/èïû›ÒåíÙ7;åÈáÖ=Wí^Ì_?U—$5F5„Sﬁ¬¸Wöj°yÇQÀ±ŸG*—ª&nw¡Ê€<É^P‹ﬂTÛ26<∞â6ÑÍ&¿µ¬ñßS˙E √2\d≈⁄⁄H—óêS_ÚÆêâÌ¢Ex…AÊNÆh.∂+:s@n¸¥[IOA‘°ÇÒ0ÇÌ
++Ç71Ç›0ÇŸ	*ÜHÜ˜†Ç 0Ç∆10	`ÜHe 0ÇU*ÜHÜ˜	†ÇDÇ@0Ç<
++ÑY
+010	`ÜHe  LX<TﬂÜ=n˜t‘\≠Xg‘’çSÂêr<í§ÆˆK_àtµöÒ20201020124751.855Z0ÄÙ†Å‘§Å—0ÅŒ10	UUS10U
+Washington10URedmond10U
+Microsoft Corporation1)0'U Microsoft Operations Puerto Rico1&0$UThales TSS ESN:D9DE-E39A-43FE1%0#UMicrosoft Time-Stamp Service†ÇD0Çı0Ç›†3  -.MA ce3†    -0	*ÜHÜ˜ 0|10	UUS10U
+Washington10URedmond10U
+Microsoft Corporation1&0$UMicrosoft Time-Stamp PCA 20100191219011504Z210317011504Z0ÅŒ10	UUS10U
+Washington10URedmond10U
+Microsoft Corporation1)0'U Microsoft Operations Puerto Rico1&0$UThales TSS ESN:D9DE-E39A-43FE1%0#UMicrosoft Time-Stamp Service0Ç"0	*ÜHÜ˜ Ç 0Ç
+Ç ©açÙuI:òE4∑≥H∏åá1_Ü‡›(b%@Ø©óÄ’0Y´÷$ŸR„›;{W°~3W«H}ãKÆ◊ g®*ç:Kâ€Vs8ªroGÏA£˙É¸#p†√^íå• Ò?ùí:u§˚'@áh#¸∂Øa\ËMx´ei`Cˇ¯ÊA·©abÒh æ«$πÍ‹Pi!ac<_¯%NÕ˛∂√Æ÷¶a∑º.Ÿâ4n(H (Ø–·¥o´¿4Ω◊}ùlîª@ú†ú±[◊JfwÂ∞*ù„x∏DÀ√PuÜ#[HÈLhµÁåk ‡«t®Zº“{	“?üÜ¸4‰u`˛îﬂ £Ç0Ç0UŸld|B!¯Näˇ/Cæ4ÚùÜÕ0U#0Ä’c:\ä1êÛC{|F≈3hZÖmU0VUO0M0K†I†GÜEhttp://crl.microsoft.com/pki/crl/products/MicTimStaPCA_2010-07-01.crl0Z+N0L0J+0Ü>http://www.microsoft.com/pki/certs/MicTimStaPCA_2010-07-01.crt0Uˇ0 0U%0
++0	*ÜHÜ˜ Ç }kd˜N´y¿n†ÓƒŒÆ¡ÒAÆÙJ^"¸iÕn∆Cèsˇz|j’YD,G7ç⁄›aõ∆h)åR~î
+Gs»|“ÑmS3ú]féî∫°GÍœ6°◊fãRWÎÁÛê1ôÁ¿3v‹.ﬂñ4D∏ÊY‚CŸU¡m2é…Ò†‘Oã	©¯í,˛_’"%é§‰TJÚE≈X„nz5⁄îgÌ„¢Ì€‡‡$¥MÆÆæÈTp’˜ﬂ:\Yo√2ºNf™Ù’$‰≠WÆÜÍ†÷≤ÚVµÅûbä‚2YÁÌ8◊Ã√I“e»F.(xâÈw¬gî%ˆﬂ⁄3±	InÜÛ B>2pb0Çq0ÇY†
+a	Å*     0	*ÜHÜ˜ 0Åà10	UUS10U
+Washington10URedmond10U
+Microsoft Corporation1200U)Microsoft Root Certificate Authority 20100100701213655Z250701214655Z0|10	UUS10U
+Washington10URedmond10U
+Microsoft Corporation1&0$UMicrosoft Time-Stamp PCA 20100Ç"0	*ÜHÜ˜ Ç 0Ç
+Ç ©ºwä: Ï¸óı˙iîktT’•
+ ÇÖ˚Ì|hK,_≈√Âa¬v∑>f+[S'1AïŒ	é|a0Y±0DÒ`àÑTC◊M∏8≥B›ì¨÷s0W&Ç£E–ÍıGÅÕø$`2X`FÚXGÜ2Ñtagë_ÅT±œìLí¡ƒ¶]—an(∆˘ÜÄªﬂa¸F¡'$gr!äØKdâPb±]˝w=Wu¨ΩäBM@Q—ú>gıf¿ñD~Ô–K˝nÂö ±®Úz*
+1⁄Në∂à5Ëx∞ÈôÕ<Á/D∫ßÙ‹dΩ§¡ 	ìxÕ¸º¿…D]^úO"M £ÇÊ0Ç‚0	+Ç7 0U’c:\ä1êÛC{|F≈3hZÖmU0	+Ç7
+ S u b C A0UÜ0Uˇ0ˇ0U#0Ä’ˆVÀèË¢\bh—=îê[◊Œöƒ0VUO0M0K†I†GÜEhttp://crl.microsoft.com/pki/crl/products/MicRooCerAut_2010-06-23.crl0Z+N0L0J+0Ü>http://www.microsoft.com/pki/certs/MicRooCerAut_2010-06-23.crt0Å†U ˇÅï0Åí0Åè	+Ç7.0ÅÅ0=+1http://www.microsoft.com/PKI/docs/CPS/default.htm0@+042  L e g a l _ P o l i c y _ S t a t e m e n t . 0	*ÜHÜ˜ Ç ÊàQ‚∆‡ò?Åq=ù£°!o≥Î¶Ãı1æœ‚©˛˙Wm0≥¬≈f…jﬂıÁxΩ«®û%„˘ºÌkTW+QÇD˚πSåÃÙ`ävÃ@@Aõ‹\ˇ\˘^5ò$VKtÔB»Øø∆Ú7}Z?ÚôyJëR Ø8ı/yÅeŸ©µk‰«Œˆ z oK0D$"<œÌ•ñèY)º∂˝·pü2J'˝UØ/˛∂Âé3ªb_ö€W@ÈÒŒôfêåˇjb›≈Jë&‚9ÏJqcù{!m√ú£¢<˙}ñjêx¶m“·ú˘¸8ÿîÙ∆•
+ñÜ§ΩûÆBÉ∏µÄõ"8 µ%ÂdÏ˜Ùø~cY%z.9Wv¢q™äâ∫aßÀöÿGöÄ≈–Õß–Ô}É·;q	ﬂ]tò"a⁄∞PoΩÒ· ﬂÁ1§ì:˜eGxË¯®H´˜ﬁr~akow©ÅÀß	¨9ªÏ∆ÀÿÇ¥rÕÙ∏ÖÄ˚â*T9≤[⁄»Uôzás;Êò-Íç‡3.)ı¿/T'!˜»¨N⁄(∏±©€ñ≤ßB¢…œAM‡Ü˘*ö£f0”ªt2Kﬂc{ıôä/«!ØYµÆ‹D<óPq◊°“≈U„iﬁW¡—ﬁ0¿˝ÃÊM˚ø]OÈù8/ºœX.Ô†P5⁄Ô	'’≥~5∫⁄6€”_èﬁtàI°Ç“0Ç;0Å¸°Å‘§Å—0ÅŒ10	UUS10U
+Washington10URedmond10U
+Microsoft Corporation1)0'U Microsoft Operations Puerto Rico1&0$UThales TSS ESN:D9DE-E39A-43FE1%0#UMicrosoft Time-Stamp Service¢#
+0+ üŒ_«~á{±tæ	≤R\ˆ√Õ•–±†ÅÉ0ÅÄ§~0|10	UUS10U
+Washington10URedmond10U
+Microsoft Corporation1&0$UMicrosoft Time-Stamp PCA 20100	*ÜHÜ˜  „8·∏0"20201020081032Z20201021081032Z0w0=
++ÑY
+1/0-0
+ „8·∏ 0
+ &ºˇ0 ∞0
+ „:38 06
++ÑY
+1(0&0
++ÑY
+†
+0 ° °
+0 Ü†0	*ÜHÜ˜ ÅÅ ç&<‘<Y∂û±∞Ú’âƒN—cö∂Éf€‹≥≠™ ‘9ÒØïUÙ•Î'≠cLHõXz=ˇ'ÍïƒîÑÎtä›ÛM\ãP£d5‡ìS•ü…	üaø›=„˘œòù¨U'~‹FÌÔò∏πÑ´ë2 q|ÊíÿƒÌÎÏ‘‚&Ô≈9Æy¨©vÀb√4˚1Ç0Ç	0Åì0|10	UUS10U
+Washington10URedmond10U
+Microsoft Corporation1&0$UMicrosoft Time-Stamp PCA 20103  -.MA ce3†    -0	`ÜHe †ÇJ0	*ÜHÜ˜	1*ÜHÜ˜	0/	*ÜHÜ˜	1" Bjù√ª]õúÊ≠#PUˇ»Ë˙—ã$"ûFMp‡¶0Å˙*ÜHÜ˜	/1ÅÍ0ÅÁ0Å‰0ÅΩ éÒZrr} è‚ï<6“¯)õ™?ÓMuöá9°·É¡0Åò0ÅÄ§~0|10	UUS10U
+Washington10URedmond10U
+Microsoft Corporation1&0$UMicrosoft Time-Stamp PCA 20103  -.MA ce3†    -0" UIUGﬂ7a2VñëL±à;*Ùÿ°9 *]™b'˘0	*ÜHÜ˜ Ç /lå!„xÖ´-4“5àK-X:˜%
+J°ø¨›CÕ—2Ó_CA⁄&πU1A$õê!≥ià⁄vD?ªŸ¯™ôçR{1∞÷Ë˜Ójç¬˙’:öŸp∏4_A∑F\∑‘`¥EEπÀ;nF‡≥í"Ù˝Y§ùp 4k™∞e©Ä0Ê ”ÿÀ#Ê¡◊øJ£—á>ŸrâAéå0‰púˆ≤LÿÀ∏èsÌfä«Ã®.Ø©ü∫P∂›g˝©Ù5qJQ?ùf∞^ñü]√î„E∏Ø‚≠„^“v›si)Ïl 9“[â÷jê97êÿk„≈dÂCs¬†fZŒtt)4{„∞r>óØwÙ       
