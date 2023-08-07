@@ -14,7 +14,6 @@ namespace EstacioneJa.Data
 
         }
 
-        public DbSet<Gerente> Gerentes { get; set;}
         public DbSet<OcupacaoVaga> OcupacaoVagas { get; set;}
         public DbSet<Pagamento> Pagamentos { get; set;}
         public DbSet<Sensor> Sensores { get; set;}
