@@ -4,6 +4,7 @@ using EstacioneJa.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace EstacioneJa.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20230814134301_MigracaoUsuario2")]
+    partial class MigracaoUsuario2
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -77,13 +80,7 @@ namespace EstacioneJa.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<double?>("Latitude")
-                        .HasColumnType("float");
-
-                    b.Property<double?>("Longitude")
-                        .HasColumnType("float");
-
-                    b.Property<int>("VagaSensor")
+                    b.Property<int>("Vaga")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
@@ -120,12 +117,7 @@ namespace EstacioneJa.Migrations
                     b.Property<int>("TipoUsuario")
                         .HasColumnType("int");
 
-                    b.Property<int?>("UsuarioId")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("UsuarioId");
 
                     b.ToTable("Usuarios");
 
@@ -137,25 +129,10 @@ namespace EstacioneJa.Migrations
                             Email = "seuEmail@gmail.com",
                             Nome = "UsuarioAdmin",
                             Preferencia = false,
-                            SenhaHash = new byte[] { 127, 117, 23, 9, 51, 27, 110, 110, 135, 22, 163, 208, 154, 64, 160, 14, 247, 239, 168, 49, 112, 89, 230, 94, 198, 137, 128, 1, 152, 236, 106, 172, 11, 109, 0, 173, 144, 66, 30, 194, 116, 246, 237, 99, 134, 165, 156, 130, 145, 142, 101, 242, 127, 45, 233, 156, 168, 7, 121, 47, 102, 104, 110, 11 },
-                            SenhaSalt = new byte[] { 121, 13, 255, 85, 146, 244, 53, 171, 32, 119, 64, 73, 165, 13, 41, 98, 35, 36, 67, 243, 156, 184, 211, 229, 208, 243, 5, 153, 229, 220, 189, 82, 45, 61, 93, 174, 97, 189, 129, 102, 6, 12, 201, 105, 163, 77, 197, 72, 199, 198, 208, 126, 218, 48, 130, 62, 121, 141, 186, 138, 65, 80, 227, 137, 198, 50, 237, 223, 129, 104, 119, 70, 252, 118, 146, 17, 176, 193, 2, 143, 157, 71, 134, 119, 122, 192, 60, 85, 149, 35, 164, 111, 28, 118, 241, 224, 75, 196, 62, 32, 235, 123, 22, 178, 113, 83, 18, 238, 167, 100, 14, 199, 32, 166, 104, 188, 66, 19, 49, 151, 221, 176, 121, 225, 87, 244, 101, 68 },
+                            SenhaHash = new byte[] { 39, 98, 183, 74, 87, 6, 128, 178, 22, 112, 17, 41, 78, 156, 159, 64, 225, 28, 141, 215, 227, 164, 121, 221, 197, 123, 33, 12, 143, 114, 108, 197, 134, 215, 63, 95, 175, 151, 90, 81, 161, 142, 205, 48, 52, 113, 230, 222, 40, 119, 55, 227, 72, 69, 86, 117, 15, 168, 189, 154, 66, 61, 222, 102 },
+                            SenhaSalt = new byte[] { 156, 25, 12, 198, 129, 252, 68, 70, 49, 120, 197, 181, 212, 155, 246, 89, 44, 51, 85, 91, 43, 160, 178, 47, 80, 167, 190, 244, 27, 112, 94, 113, 6, 27, 46, 195, 192, 128, 118, 107, 19, 24, 238, 135, 22, 108, 64, 176, 202, 133, 29, 138, 16, 30, 213, 180, 104, 106, 159, 94, 201, 132, 162, 122, 152, 234, 146, 77, 89, 175, 168, 59, 172, 156, 17, 87, 198, 193, 75, 165, 22, 97, 188, 191, 183, 6, 197, 203, 39, 159, 222, 81, 185, 240, 14, 13, 79, 3, 231, 146, 114, 155, 194, 114, 239, 15, 172, 194, 187, 231, 154, 195, 253, 199, 55, 79, 160, 36, 12, 196, 129, 12, 137, 48, 236, 226, 21, 15 },
                             TipoUsuario = 1
                         });
-                });
-
-            modelBuilder.Entity("EstacioneJa.Models.UsuarioPagamento", b =>
-                {
-                    b.Property<int>("UsuarioId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("PagamentoId")
-                        .HasColumnType("int");
-
-                    b.HasKey("UsuarioId", "PagamentoId");
-
-                    b.HasIndex("PagamentoId");
-
-                    b.ToTable("UsuarioPagamentos");
                 });
 
             modelBuilder.Entity("EstacioneJa.Models.Vaga", b =>
@@ -175,6 +152,9 @@ namespace EstacioneJa.Migrations
                     b.Property<bool>("Disponibilidade")
                         .HasColumnType("bit");
 
+                    b.Property<int?>("IdSensorId")
+                        .HasColumnType("int");
+
                     b.Property<int>("Numero")
                         .HasColumnType("int");
 
@@ -184,110 +164,20 @@ namespace EstacioneJa.Migrations
                     b.Property<string>("Secao")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("SensorId")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("SensorId")
-                        .IsUnique();
+                    b.HasIndex("IdSensorId");
 
                     b.ToTable("Vagas");
                 });
 
-            modelBuilder.Entity("EstacioneJa.Models.VagaUsuario", b =>
-                {
-                    b.Property<int>("VagaId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("UsuarioId")
-                        .HasColumnType("int");
-
-                    b.HasKey("VagaId", "UsuarioId");
-
-                    b.HasIndex("UsuarioId");
-
-                    b.ToTable("VagaUsuarios");
-                });
-
-            modelBuilder.Entity("EstacioneJa.Models.Usuario", b =>
-                {
-                    b.HasOne("EstacioneJa.Models.Usuario", null)
-                        .WithMany("Usuarios")
-                        .HasForeignKey("UsuarioId");
-                });
-
-            modelBuilder.Entity("EstacioneJa.Models.UsuarioPagamento", b =>
-                {
-                    b.HasOne("EstacioneJa.Models.Pagamento", "Pagamento")
-                        .WithMany("UsuarioPagamentos")
-                        .HasForeignKey("PagamentoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("EstacioneJa.Models.Usuario", "Usuario")
-                        .WithMany("UsuarioPagamentos")
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Pagamento");
-
-                    b.Navigation("Usuario");
-                });
-
             modelBuilder.Entity("EstacioneJa.Models.Vaga", b =>
                 {
-                    b.HasOne("EstacioneJa.Models.Sensor", "Sensor")
-                        .WithOne("Vaga")
-                        .HasForeignKey("EstacioneJa.Models.Vaga", "SensorId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                    b.HasOne("EstacioneJa.Models.Sensor", "IdSensor")
+                        .WithMany()
+                        .HasForeignKey("IdSensorId");
 
-                    b.Navigation("Sensor");
-                });
-
-            modelBuilder.Entity("EstacioneJa.Models.VagaUsuario", b =>
-                {
-                    b.HasOne("EstacioneJa.Models.Usuario", "Usuario")
-                        .WithMany("VagaUsuarios")
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("EstacioneJa.Models.Vaga", "Vaga")
-                        .WithMany("VagaUsuarios")
-                        .HasForeignKey("VagaId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Usuario");
-
-                    b.Navigation("Vaga");
-                });
-
-            modelBuilder.Entity("EstacioneJa.Models.Pagamento", b =>
-                {
-                    b.Navigation("UsuarioPagamentos");
-                });
-
-            modelBuilder.Entity("EstacioneJa.Models.Sensor", b =>
-                {
-                    b.Navigation("Vaga");
-                });
-
-            modelBuilder.Entity("EstacioneJa.Models.Usuario", b =>
-                {
-                    b.Navigation("UsuarioPagamentos");
-
-                    b.Navigation("Usuarios");
-
-                    b.Navigation("VagaUsuarios");
-                });
-
-            modelBuilder.Entity("EstacioneJa.Models.Vaga", b =>
-                {
-                    b.Navigation("VagaUsuarios");
+                    b.Navigation("IdSensor");
                 });
 #pragma warning restore 612, 618
         }

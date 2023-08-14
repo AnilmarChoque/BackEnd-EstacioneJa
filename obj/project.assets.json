@@ -3888,11 +3888,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "c:\\Arquivos\\3AI\\TCC\\EstacioneJa\\EstacioneJa.csproj",
+      "projectUniqueName": "A:\\3Ai\\TCC\\EstacioneJa\\EstacioneJa.csproj",
       "projectName": "EstacioneJa",
-      "projectPath": "c:\\Arquivos\\3AI\\TCC\\EstacioneJa\\EstacioneJa.csproj",
+      "projectPath": "A:\\3Ai\\TCC\\EstacioneJa\\EstacioneJa.csproj",
       "packagesPath": "C:\\Users\\etechas\\.nuget\\packages\\",
-      "outputPath": "c:\\Arquivos\\3AI\\TCC\\EstacioneJa\\obj\\",
+      "outputPath": "A:\\3Ai\\TCC\\EstacioneJa\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

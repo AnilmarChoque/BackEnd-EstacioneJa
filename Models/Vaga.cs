@@ -14,7 +14,10 @@ namespace EstacioneJa.Models
         public string Secao { get; set; }
         public int Numero { get; set; }
         public string Preferencia { get; set; }
-        public int Coordenada { get; set; }
-        public Sensor IdSensor { get; set; }
+        public double? Longitude { get; set; }
+        public double? Latitude { get; set; }
+        public Sensor Sensor { get; set; }
+        public int SensorId { get; set; }
+        public List<VagaUsuario> VagaUsuarios { get; set; }
     }
 }

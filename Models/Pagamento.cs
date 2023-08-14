@@ -12,5 +12,6 @@ namespace EstacioneJa.Models
         public string Emissor { get; set; }
         public string Receptor { get; set; }
         public string FormaPagamento { get; set; }
+        public List<UsuarioPagamento> UsuarioPagamentos { get; set; }
     }
 }

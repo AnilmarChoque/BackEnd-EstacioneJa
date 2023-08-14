@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using EstacioneJa.Data;
 using EstacioneJa.Models;
 using Microsoft.EntityFrameworkCore;
+using EstacioneJa.Utils;
 
 namespace EstacioneJa.Controllers
 {
@@ -18,6 +19,15 @@ namespace EstacioneJa.Controllers
         public UsuarioController (DataContext context)
         {
             _context = context;
+        }
+
+        private async Task<bool> UsuarioExistente(string nome)
+        {
+            if (await _context.Usuarios.AnyAsync(x => x.Nome.ToLower() == nome.ToLower()))
+            {
+                return true;
+            }
+            return false;
         }
 
         [HttpGet("{id}")]
@@ -92,5 +102,56 @@ namespace EstacioneJa.Controllers
                 return BadRequest(ex.Message);
             }
         }
+        [HttpPost("Registrar")]
+        public async Task<IActionResult> RegistrarUsuario(Usuario user)
+        {
+            try
+            {
+                if(await UsuarioExistente(user.Nome))
+                {
+                    throw new System.Exception("Nome já existe");
+                }
+                Criptografia.CriarSenhaHash(user.Senha, out byte[] hash, out byte[] salt);
+                user.Senha = string.Empty;
+                user.SenhaHash = hash;
+                user.SenhaSalt = salt;
+                await _context.Usuarios.AddAsync(user);
+                await _context.SaveChangesAsync();
+
+                return Ok(user.Id);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpPost("Autenticar")]
+        public async Task<IActionResult> AutenticarUsuario(Usuario credenciais)
+        {
+            try
+            {
+                Usuario usuario = await _context.Usuarios
+                .FirstOrDefaultAsync(x => x.Nome.ToLower().Equals(credenciais.Nome.ToLower()));
+
+                if(usuario == null)
+                {
+                    throw new System.Exception("Usuário não encontrado");
+                }
+                else if (!Criptografia.VerificarSenhaHash(credenciais.Senha, usuario.SenhaHash, usuario.SenhaSalt))
+                {
+                    throw new System.Exception("Senha incorreta");
+                }
+                else
+                {
+                    return Ok(usuario);
+                }
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
     }
 }

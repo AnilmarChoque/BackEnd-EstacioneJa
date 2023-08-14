@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "sbwpre319HtA+6D6vRBb+8sW/akQpqZOfBqT0o36jblCMkXEL1CPiIMgwcVvNvadL1Udj9Fvy2PQGd3hL7+03g==",
+  "dgSpecHash": "0B63d15bH4ofEAvebYMhIC7FGuRrxJ7moir3DUlfj7HX8ByoULPhBfEQ+Ed+GFrXOBZcmox70PUQWlYoadbYRA==",
   "success": true,
-  "projectFilePath": "C:\\Arquivos\\3AI\\TCC\\EstacioneJa\\EstacioneJa.csproj",
+  "projectFilePath": "A:\\3Ai\\TCC\\EstacioneJa\\EstacioneJa.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\etechas\\.nuget\\packages\\azure.core\\1.24.0\\azure.core.1.24.0.nupkg.sha512",
     "C:\\Users\\etechas\\.nuget\\packages\\azure.identity\\1.6.0\\azure.identity.1.6.0.nupkg.sha512",
